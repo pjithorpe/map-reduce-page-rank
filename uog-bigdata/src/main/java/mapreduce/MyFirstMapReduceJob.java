@@ -82,7 +82,7 @@ public class MyFirstMapReduceJob extends Configured implements Tool {
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
 		// 5. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
-        job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 7000);
+        job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 14000);
         job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(IntWritable.class);
 		
