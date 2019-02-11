@@ -9,6 +9,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -24,19 +25,20 @@ public class MyFirstMapReduceJob extends Configured implements Tool {
 	// Your mapper class; remember to set the input and output key/value class appropriately in the <...> part below.
 	@InterfaceAudience.Public
 	@InterfaceStability.Stable
-	static class MyFirstMapper extends Mapper<Object, Text, Text, IntWritable> {
+	static class MyFirstMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
 		
 		private final static IntWritable one = new IntWritable(1);
 		private Text word = new Text();
 
 		// The main map() function; the input key/value classes must match the first two above, and the key/value classes in your emit() statement must match the latter two above.
 		@Override
-		protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+		protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
 			StringTokenizer itr = new StringTokenizer(value.toString());
 		    while (itr.hasMoreTokens()) {
 		      word.set(itr.nextToken());
 		      context.write(word, one);
 		    }
+		    System.out.println("success feels good");
 		}
 	}
 
@@ -64,24 +66,27 @@ public class MyFirstMapReduceJob extends Configured implements Tool {
 	public int run(String[] args) throws Exception {
 		// 0. Instantiate a Job object; remember to pass the Driver's configuration on to the job
 		Job job = Job.getInstance(getConf(), "MyFirstMapReduceJob");
-
+		
 		// 1. Set the jar name in the job's conf; thus the Driver will know which file to send to the cluster
 		job.setJarByClass(MyFirstMapReduceJob.class);
-
+		
 		// 2. Set mapper and reducer classes
 		job.setMapperClass(MyFirstMapper.class);
-
+		
 		// 3. Set input and output format, mapper output key and value classes, and final output key and value classes
 		job.setReducerClass(MyFirstReducer.class);
 
 		// 4. Set input and output paths; remember, these will be HDFS paths or URLs
-		FileInputFormat.addInputPath(job, new Path(args[0]));
+		job.setInputFormatClass(NLineInputFormat.class);
+        NLineInputFormat.addInputPath(job, new Path(args[0]));
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
 		// 5. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
-		job.setInputFormatClass(NLineInputFormat.class);
-        NLineInputFormat.addInputPath(job, new Path(args[0]));
-        job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 14);
+        job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 7000);
+        job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(IntWritable.class);
+		
+		job.setNumReduceTasks(4);
 
 		// 6. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
 		boolean succeeded = job.waitForCompletion(true);
