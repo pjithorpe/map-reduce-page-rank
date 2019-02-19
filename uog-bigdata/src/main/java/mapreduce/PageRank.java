@@ -26,7 +26,7 @@ public class PageRank extends Configured implements Tool {
 	// Your main Driver method. Note: everything in this method runs locally at the client.
 	public int run(String[] args) throws Exception {
 		// 0. Instantiate a Job object; remember to pass the Driver's configuration on to the job
-		Job job = Job.getInstance(getConf(), "GetLinkedPagesJob");
+		Job job = Job.getInstance(getConf(), "PageRankJob");
 		
 		// 1. Set the jar name in the job's conf; thus the Driver will know which file to send to the cluster
 		job.setJarByClass(PageRank.class);
@@ -35,7 +35,7 @@ public class PageRank extends Configured implements Tool {
 		job.setMapperClass(ArticleDateMapper.class);
 		job.setReducerClass(ArticleDateReducer.class);
 		
-		job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 14000);
+		job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 28000);
 		// 3. Set input and output format, mapper output key and value classes, and final output key and value classes
 		job.setInputFormatClass(NLineInputFormat.class);
 		job.setOutputKeyClass(Text.class);
@@ -53,23 +53,24 @@ public class PageRank extends Configured implements Tool {
 		// 6. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
 		job.waitForCompletion(true);
 		
+		
+		Job job2 = Job.getInstance(getConf(), "PageRankJob");
 		int numLoops = 3; // Change this!
-
 		boolean succeeded = false;
 		for (int i = 0; i < numLoops; i++) {
 			// 5. Set input and output format, mapper output key and value classes, and final output key and value classes
 			//    As this will be a looping job, make sure that you use the output directory of one job as the input directory of the next!
-			job.setInputFormatClass(TextInputFormat.class);
-			job.setOutputKeyClass(Text.class);
-			job.setOutputValueClass(Text.class);
+			job2.setInputFormatClass(TextInputFormat.class);
+			job2.setOutputKeyClass(Text.class);
+			job2.setOutputValueClass(Text.class);
 			
-			TextInputFormat.addInputPath(job, new Path(args[1] + "temp" + Integer.toString(i)));
-			FileOutputFormat.setOutputPath(job, new Path(args[1] + "temp" + Integer.toString(i+1)));
+			TextInputFormat.addInputPath(job2, new Path(args[1] + "_temp" + Integer.toString(i)));
+			FileOutputFormat.setOutputPath(job2, new Path(args[1] + "_temp" + Integer.toString(i+1)));
 			
 			// 6. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
 
 			// 7. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
-			succeeded = job.waitForCompletion(true);
+			succeeded = job2.waitForCompletion(true);
 
 			if (!succeeded) {
 				// 8. The program encountered an error before completing the loop; report it and/or take appropriate action
