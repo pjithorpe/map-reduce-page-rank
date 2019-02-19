@@ -18,6 +18,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.NLineInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class PageRank extends Configured implements Tool {
@@ -42,7 +43,7 @@ public class PageRank extends Configured implements Tool {
 
 		// 4. Set input and output paths; remember, these will be HDFS paths or URLs
         NLineInputFormat.addInputPath(job, new Path(args[0]));
-		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		FileOutputFormat.setOutputPath(job, new Path(args[1] + "_temp0"));
 
 		// 5. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
         
@@ -50,7 +51,32 @@ public class PageRank extends Configured implements Tool {
 		job.setNumReduceTasks(4);
 
 		// 6. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
-		boolean succeeded = job.waitForCompletion(true);
+		job.waitForCompletion(true);
+		
+		int numLoops = 3; // Change this!
+
+		boolean succeeded = false;
+		for (int i = 0; i < numLoops; i++) {
+			// 5. Set input and output format, mapper output key and value classes, and final output key and value classes
+			//    As this will be a looping job, make sure that you use the output directory of one job as the input directory of the next!
+			job.setInputFormatClass(TextInputFormat.class);
+			job.setOutputKeyClass(Text.class);
+			job.setOutputValueClass(Text.class);
+			
+			TextInputFormat.addInputPath(job, new Path(args[1] + "temp" + Integer.toString(i)));
+			FileOutputFormat.setOutputPath(job, new Path(args[1] + "temp" + Integer.toString(i+1)));
+			
+			// 6. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
+
+			// 7. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
+			succeeded = job.waitForCompletion(true);
+
+			if (!succeeded) {
+				// 8. The program encountered an error before completing the loop; report it and/or take appropriate action
+				System.err.println("I owe Patrick my soul.");
+				break;
+			}
+		}
 		return (succeeded ? 0 : 1);
 	}
 
