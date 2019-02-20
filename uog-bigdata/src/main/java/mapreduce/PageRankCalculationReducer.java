@@ -12,33 +12,34 @@ import org.apache.hadoop.mapreduce.Reducer.Context;
 
 public class PageRankCalculationReducer<Key> extends Reducer<Key, Text, Key, Text> {
 
-	Text textValue = new Text();
+	Text title = new Text();
+	Text linksAndPR = new Text();
 
 	protected void reduce(Key key, Iterable<Text> values, Context context)
 			throws IOException, InterruptedException {
-
-		StringBuilder pageRanks = new StringBuilder();
-		String original = null;
+		float pr = 0.0f;
+		StringBuilder sb = new StringBuilder("");
 		for (Text val : values) {
-			String valStr = val.toString();
-			if(valStr.startsWith("<")) {
-				original = valStr.substring(1, valStr.length() - 1);
+			String[] transfer = val.toString().split("\\s");
+			try {
+				if(transfer[0].equals(key.toString())) { //signifies original key and links, remember to write back to file
+					title.set(transfer[0]);
+					for(int i=1; i<transfer.length; i++) {
+						sb.append(transfer[i]);
+						sb.append(" ");
+					}
+				}
+				else {
+					pr += Float.parseFloat(transfer[0]);
+				}
 			}
-			else {
-				pageRanks.append(valStr);
-				pageRanks.append(" ");
+			catch(Exception e) {
+				System.out.println("A value for the reducer is badly formatted.");
 			}
 		}
 		
-		String[] prs = pageRanks.toString().split(" ");
-		float pr = 0.0f;
-		for (String val : prs) {
-			if(val.length() != 0) {
-				pr = pr + Float.parseFloat(val);
-			}
-		}
-		pr = (pr * 0.85f) + 0.15f;
-		textValue.set(original + " " + pr);
-		context.write(key, textValue);
+		pr = (pr * 0.85f) + 0.15f; //dampening factor
+		linksAndPR.set(sb.toString() + " " + Float.toString(pr));
+		context.write(key, linksAndPR);
 	}
 }

@@ -47,7 +47,7 @@ public class PageRank extends Configured implements Tool {
 		int iterations = 0;
         if(itersStr != null) {
         	try {
-        		iterations = Integer.parseInt(dateStr);
+        		iterations = Integer.parseInt(itersStr);
         	}
         	catch(NumberFormatException e) {
         		System.out.println("Failed to read iteration count.");
@@ -55,7 +55,7 @@ public class PageRank extends Configured implements Tool {
         	}
         	
         	if(iterations < 1) {
-        		System.out.println("This is an insufficient number of iterations.");
+        		System.out.println("Insufficient number of iterations.");
                 System.exit(0);
         	}
         }
@@ -72,6 +72,8 @@ public class PageRank extends Configured implements Tool {
         }
 		
 		// 0. Instantiate a Job object; remember to pass the Driver's configuration on to the job
+        Configuration conf = new Configuration();
+		
 		Job job = Job.getInstance(getConf(), "PageRankJob");
 		
 		// 1. Set the jar name in the job's conf; thus the Driver will know which file to send to the cluster
@@ -82,6 +84,9 @@ public class PageRank extends Configured implements Tool {
 		job.setReducerClass(ArticleDateReducer.class);
 		
 		job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 28000);
+		job.getConfiguration().set("mapreduce.framework.name", "local");
+		job.getConfiguration().set("fs.defaultFS","file:///");
+		
 		// 3. Set input and output format, mapper output key and value classes, and final output key and value classes
 		job.setInputFormatClass(NLineInputFormat.class);
 		job.setOutputKeyClass(Text.class);
@@ -94,7 +99,7 @@ public class PageRank extends Configured implements Tool {
 		// 5. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
         
 		
-		job.setNumReduceTasks(4);
+		job.setNumReduceTasks(10);
 
 		// 6. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
 		job.waitForCompletion(true);
@@ -116,17 +121,22 @@ public class PageRank extends Configured implements Tool {
 			job2.setOutputKeyClass(Text.class);
 			job2.setOutputValueClass(Text.class);
 			
+			job2.getConfiguration().set("mapreduce.framework.name", "local");
+			job2.getConfiguration().set("fs.defaultFS","file:///");
+			job2.setNumReduceTasks(30);
+			
 			KeyValueTextInputFormat.addInputPath(job2, new Path(outputPath + "_temp" + Integer.toString(i)));
 			FileOutputFormat.setOutputPath(job2, new Path(outputPath + "_temp" + Integer.toString(i+1)));
 			
 			// 6. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
+			
 
 			// 7. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
 			succeeded = job2.waitForCompletion(true);
 
 			if (!succeeded) {
 				// 8. The program encountered an error before completing the loop; report it and/or take appropriate action
-				System.err.println("I owe Patrick my soul.");
+				System.err.println("It broke.");
 				break;
 			}
 		}

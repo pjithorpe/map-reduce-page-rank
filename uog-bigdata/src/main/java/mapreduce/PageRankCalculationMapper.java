@@ -16,7 +16,8 @@ public class PageRankCalculationMapper extends Mapper<Text, Text, Text, Text> { 
 																				// first two above, and the key/value
 																				// classes in your emit() statement must
 																				// match the latter two above.
-	Text textKey = new Text(); Text textValue = new Text();
+	Text link = new Text();
+	Text sourceAndPRAndLinkCount = new Text();
 	/**
 	 * extended from example at
 	 * "https://coe4bd.github.io/HadoopHowTo/stringMultipleValues/stringMultipleValues.html"
@@ -25,7 +26,25 @@ public class PageRankCalculationMapper extends Mapper<Text, Text, Text, Text> { 
 	 */
 	@Override
 	public void map(Text key, Text value, Context context) throws IOException, InterruptedException {
-		String line = value.toString();
+		String[] line = value.toString().split("\\s");
+		int noOfLinks = line.length - 1;
+		float pr = Float.parseFloat(line[noOfLinks]); //score is at the end of the string
+		
+		StringBuilder links = new StringBuilder("");
+		if(noOfLinks > 0) {
+			float prFraction = pr / noOfLinks;
+			for(int i=0; i<noOfLinks; i++) { //(ignore last entry as this is the score)
+				links.append(line[i]);
+				links.append(" ");
+				link.set(line[i].toString());
+				sourceAndPRAndLinkCount.set(Float.toString(prFraction));
+				context.write(link, sourceAndPRAndLinkCount); //key: title of link, value: source title, source page-rank, noOfLinks from source
+			}
+		}
+		context.write(key, new Text(key.toString() + " " + links.toString()));
+		//context.write(key, new Text(links.toString())); //also send copy of original input so that reducer sets up the same articles and links again
+		
+		/*String line = value.toString();
 		String[] field = line.split(" ");
 		float pr = Float.parseFloat(field[field.length-1]);
 		field = Arrays.copyOf(field, field.length - 1);
@@ -46,6 +65,6 @@ public class PageRankCalculationMapper extends Mapper<Text, Text, Text, Text> { 
 			textKey.set(outlink);
 			context.write(textKey, textValue);
 			//System.out.println("key: " + outlink + " value: " + textValue.toString());
-		}
+		}*/
 	}
 }

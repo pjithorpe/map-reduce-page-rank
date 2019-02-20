@@ -20,7 +20,6 @@ public class ArticleDateReducer<Key> extends Reducer<Key, Text, Key, Text> {
 			long articleDate;
 		    for (Text dAndLs : allDateAndLinks) {
 		    	try {
-		    		System.out.println(dAndLs.toString().substring(0, 20));
 					articleDate = utils.ISO8601.toTimeMS(dAndLs.toString().substring(0, 20)); //TODO: could move conversion to mapper?
 				} catch (ParseException e) {
 					e.printStackTrace();
