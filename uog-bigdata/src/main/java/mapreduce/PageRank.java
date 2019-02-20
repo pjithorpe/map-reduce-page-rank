@@ -54,14 +54,15 @@ public class PageRank extends Configured implements Tool {
 		job.waitForCompletion(true);
 		
 		
-		Job job2 = Job.getInstance(getConf(), "PageRankJob");
+		Job job2;
 		int numLoops = 3; // Change this!
 		boolean succeeded = false;
 		for (int i = 0; i < numLoops; i++) {
+			job2 = Job.getInstance(getConf(), "PageRankJob");
 			// 5. Set input and output format, mapper output key and value classes, and final output key and value classes
 			//    As this will be a looping job, make sure that you use the output directory of one job as the input directory of the next!
 			job2.setInputFormatClass(TextInputFormat.class);
-			job2.setOutputKeyClass(Text.class);
+			job2.setOutputKeyClass(LongWritable.class);
 			job2.setOutputValueClass(Text.class);
 			
 			TextInputFormat.addInputPath(job2, new Path(args[1] + "_temp" + Integer.toString(i)));
