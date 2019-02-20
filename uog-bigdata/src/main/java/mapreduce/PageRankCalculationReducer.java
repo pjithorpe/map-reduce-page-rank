@@ -17,23 +17,28 @@ public class PageRankCalculationReducer<Key> extends Reducer<Key, Text, Key, Tex
 	protected void reduce(Key key, Iterable<Text> values, Context context)
 			throws IOException, InterruptedException {
 
-		StringBuilder full = new StringBuilder();
+		StringBuilder pageRanks = new StringBuilder();
+		String original = null;
 		for (Text val : values) {
-			full.append(val);
-			full.append(" ");
+			String valStr = val.toString();
+			if(valStr.startsWith("<")) {
+				original = valStr.substring(1, valStr.length() - 1);
+			}
+			else {
+				pageRanks.append(valStr);
+				pageRanks.append(" ");
+			}
 		}
-		String full2 = full.toString();
-		String original = StringUtils.substringBetween(full2, "<", ">");
-		full2.replaceAll("#\\<.*?>", "");
-
-		String[] out = original.split(" ", 2);
-		String[] prs = full2.split(" ");
+		
+		String[] prs = pageRanks.toString().split(" ");
 		float pr = 0.0f;
 		for (String val : prs) {
-			pr = pr + Float.parseFloat(val);
+			if(val.length() != 0) {
+				pr = pr + Float.parseFloat(val);
+			}
 		}
 		pr = (pr * 0.85f) + 0.15f;
-		textValue.set(out[1] + " " + pr);
+		textValue.set(original + " " + pr);
 		context.write(key, textValue);
 	}
 }
