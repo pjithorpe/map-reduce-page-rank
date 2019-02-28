@@ -1,8 +1,10 @@
 package mapreduce;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.util.Scanner;
+import java.io.BufferedReader;
 import java.io.File;
 import java.util.StringTokenizer;
 
@@ -10,6 +12,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -33,6 +37,7 @@ public class PageRank extends Configured implements Tool {
         String outputPath = null;
         String itersStr = null;
         String dateStr = null;
+        Configuration conf = new Configuration();
 		try {
 			inputPath = args[0];
 	        outputPath = args[1];
@@ -44,6 +49,38 @@ public class PageRank extends Configured implements Tool {
 			System.exit(0);
 		}
         
+		long lineCount = 0;
+		int mapperCount = 20;
+		int nLineCount = 0;
+		if(inputPath != null) {
+			try {
+				//conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+				conf.set("fs.defaultFS","file:///");
+				FileSystem fs = FileSystem.get(conf);
+				Path path = new Path(inputPath);
+				FSDataInputStream inputStream = fs.open(path);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String line = reader.readLine();
+
+                while(line!=null){
+                    lineCount++;
+                    line = reader.readLine();
+                }
+
+                if(reader!=null){
+                    reader.close();
+                }
+			}
+			catch (Exception e) {
+				System.out.println("Failed to count file lines." + e.getMessage());
+				System.exit(0);
+			}
+			
+			nLineCount = (int) (lineCount / mapperCount);
+			nLineCount = (int) (Math.floor((nLineCount + 7) / 14) * 14);
+		}
+		
 		int iterations = 0;
         if(itersStr != null) {
         	try {
@@ -72,7 +109,6 @@ public class PageRank extends Configured implements Tool {
         }
 		
 		// 0. Instantiate a Job object; remember to pass the Driver's configuration on to the job
-        Configuration conf = new Configuration();
 		
 		Job job = Job.getInstance(getConf(), "PageRankJob");
 		
@@ -83,7 +119,7 @@ public class PageRank extends Configured implements Tool {
 		job.setMapperClass(ArticleDateMapper.class);
 		job.setReducerClass(ArticleDateReducer.class);
 		
-		job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 28000);
+		job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", nLineCount);
 		job.getConfiguration().set("mapreduce.framework.name", "local");
 		job.getConfiguration().set("fs.defaultFS","file:///");
 		
@@ -106,14 +142,18 @@ public class PageRank extends Configured implements Tool {
 		
 		
 		Job job2;
-		int numLoops = 3; // Change this!
 		boolean succeeded = false;
-		for (int i = 0; i < numLoops; i++) {
+		for (int i = 0; i < iterations; i++) {
 			job2 = Job.getInstance(getConf(), "PageRankJob");
 			job2.setJarByClass(PageRank.class);
 			
 			job2.setMapperClass(PageRankCalculationMapper.class);
-			job2.setReducerClass(PageRankCalculationReducer.class);
+			/*if(i == iterations - 1) {
+				job2.setReducerClass();
+			}*/
+			//else {
+				job2.setReducerClass(PageRankCalculationReducer.class);
+			//}
 			
 			// 5. Set input and output format, mapper output key and value classes, and final output key and value classes
 			//    As this will be a looping job, make sure that you use the output directory of one job as the input directory of the next!
