@@ -54,8 +54,8 @@ public class PageRank extends Configured implements Tool {
 		int nLineCount = 0;
 		if(inputPath != null) {
 			try {
-				//conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
-				conf.set("fs.defaultFS","file:///");
+				conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+				//conf.set("fs.defaultFS","file:///");
 				FileSystem fs = FileSystem.get(conf);
 				Path path = new Path(inputPath);
 				FSDataInputStream inputStream = fs.open(path);
@@ -97,10 +97,9 @@ public class PageRank extends Configured implements Tool {
         	}
         }
         
-        long date = 0;
         if(dateStr != null) {
         	try {
-        		date = utils.ISO8601.toTimeMS(dateStr);
+        		dateStr = Long.toString(utils.ISO8601.toTimeMS(dateStr));
         	}
         	catch(ParseException e) {
         		System.out.println("Failed to parse date provided.");
@@ -120,8 +119,9 @@ public class PageRank extends Configured implements Tool {
 		job.setReducerClass(ArticleDateReducer.class);
 		
 		job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", nLineCount);
-		job.getConfiguration().set("mapreduce.framework.name", "local");
-		job.getConfiguration().set("fs.defaultFS","file:///");
+		//job.getConfiguration().set("mapreduce.framework.name", "local");
+		//job.getConfiguration().set("fs.defaultFS","file:///");
+		job.getConfiguration().set("dateLimit", dateStr); //send the max date to the mapper
 		
 		// 3. Set input and output format, mapper output key and value classes, and final output key and value classes
 		job.setInputFormatClass(NLineInputFormat.class);
@@ -148,12 +148,10 @@ public class PageRank extends Configured implements Tool {
 			job2.setJarByClass(PageRank.class);
 			
 			job2.setMapperClass(PageRankCalculationMapper.class);
-			/*if(i == iterations - 1) {
-				job2.setReducerClass();
-			}*/
-			//else {
-				job2.setReducerClass(PageRankCalculationReducer.class);
-			//}
+			if(i == iterations - 1) {
+				job2.getConfiguration().set("lastIter", "1");
+			}
+			job2.setReducerClass(PageRankCalculationReducer.class);
 			
 			// 5. Set input and output format, mapper output key and value classes, and final output key and value classes
 			//    As this will be a looping job, make sure that you use the output directory of one job as the input directory of the next!
@@ -161,8 +159,8 @@ public class PageRank extends Configured implements Tool {
 			job2.setOutputKeyClass(Text.class);
 			job2.setOutputValueClass(Text.class);
 			
-			job2.getConfiguration().set("mapreduce.framework.name", "local");
-			job2.getConfiguration().set("fs.defaultFS","file:///");
+			//job2.getConfiguration().set("mapreduce.framework.name", "local");
+			//job2.getConfiguration().set("fs.defaultFS","file:///");
 			job2.setNumReduceTasks(30);
 			
 			KeyValueTextInputFormat.addInputPath(job2, new Path(outputPath + "_temp" + Integer.toString(i)));
