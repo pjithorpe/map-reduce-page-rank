@@ -33,6 +33,7 @@ public class PageRank extends Configured implements Tool {
 	// Your main Driver method. Note: everything in this method runs locally at the client.
 	public int run(String[] args) throws Exception {
         
+		//read input args
 		String inputPath = null;
         String outputPath = null;
         String itersStr = null;
@@ -55,7 +56,7 @@ public class PageRank extends Configured implements Tool {
 		if(inputPath != null) {
 			try {
 				conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
-				//conf.set("fs.defaultFS","file:///");
+				//conf.set("fs.defaultFS","file:///"); <-- to run locally
 				FileSystem fs = FileSystem.get(conf);
 				Path path = new Path(inputPath);
 				FSDataInputStream inputStream = fs.open(path);
@@ -107,73 +108,68 @@ public class PageRank extends Configured implements Tool {
         	}
         }
 		
-		// 0. Instantiate a Job object; remember to pass the Driver's configuration on to the job
-		
+		// Instantiate a Job object; remember to pass the Driver's configuration on to the job
 		Job job = Job.getInstance(getConf(), "PageRankJob");
 		
-		// 1. Set the jar name in the job's conf; thus the Driver will know which file to send to the cluster
+		// Set the jar name in the job's conf; thus the Driver will know which file to send to the cluster
 		job.setJarByClass(PageRank.class);
 		
-		// 2. Set mapper and reducer classes
+		// Set mapper and reducer classes
 		job.setMapperClass(ArticleDateMapper.class);
 		job.setReducerClass(ArticleDateReducer.class);
 		
 		job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", nLineCount);
-		//job.getConfiguration().set("mapreduce.framework.name", "local");
-		//job.getConfiguration().set("fs.defaultFS","file:///");
+		//job.getConfiguration().set("mapreduce.framework.name", "local"); <-- to run locally
+		//job.getConfiguration().set("fs.defaultFS","file:///"); <-- to run locally
 		job.getConfiguration().set("dateLimit", dateStr); //send the max date to the mapper
 		
-		// 3. Set input and output format, mapper output key and value classes, and final output key and value classes
+		// Set input and output format
 		job.setInputFormatClass(NLineInputFormat.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 
-		// 4. Set input and output paths; remember, these will be HDFS paths or URLs
+		// Set input and output paths; remember, these will be HDFS paths or URLs
         NLineInputFormat.addInputPath(job, new Path(inputPath));
 		FileOutputFormat.setOutputPath(job, new Path(outputPath + "_temp0"));
 
-		// 5. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
-        
-		
+		// Set other misc configuration parameters (#reducer tasks
 		job.setNumReduceTasks(10);
 
-		// 6. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
+		// Finally, submit the job to the cluster and wait for it to complete
 		job.waitForCompletion(true);
 		
 		
 		Job job2;
 		boolean succeeded = false;
 		for (int i = 0; i < iterations; i++) {
+			Path currentOutPath = new Path(outputPath + "_temp" + Integer.toString(i+1));
 			job2 = Job.getInstance(getConf(), "PageRankJob");
 			job2.setJarByClass(PageRank.class);
 			
 			job2.setMapperClass(PageRankCalculationMapper.class);
 			if(i == iterations - 1) {
 				job2.getConfiguration().set("lastIter", "1");
+				currentOutPath = new Path(outputPath);
 			}
 			job2.setReducerClass(PageRankCalculationReducer.class);
 			
-			// 5. Set input and output format, mapper output key and value classes, and final output key and value classes
-			//    As this will be a looping job, make sure that you use the output directory of one job as the input directory of the next!
 			job2.setInputFormatClass(KeyValueTextInputFormat.class);
 			job2.setOutputKeyClass(Text.class);
 			job2.setOutputValueClass(Text.class);
 			
-			//job2.getConfiguration().set("mapreduce.framework.name", "local");
-			//job2.getConfiguration().set("fs.defaultFS","file:///");
+			//job2.getConfiguration().set("mapreduce.framework.name", "local"); <-- to run locally
+			//job2.getConfiguration().set("fs.defaultFS","file:///"); <-- to run locally
 			job2.setNumReduceTasks(30);
-			
 			KeyValueTextInputFormat.addInputPath(job2, new Path(outputPath + "_temp" + Integer.toString(i)));
-			FileOutputFormat.setOutputPath(job2, new Path(outputPath + "_temp" + Integer.toString(i+1)));
-			
-			// 6. Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
+			FileOutputFormat.setOutputPath(job2, currentOutPath);
+			// Set other misc configuration parameters (#reducer tasks, counters, env variables, etc.)
 			
 
-			// 7. Finally, submit the job to the cluster and wait for it to complete; set param to false if you don't want to see progress reports
+			// Finally, submit the job to the cluster and wait for it to complete;
 			succeeded = job2.waitForCompletion(true);
 
 			if (!succeeded) {
-				// 8. The program encountered an error before completing the loop; report it and/or take appropriate action
+				// The program encountered an error before completing the loop; report it and/or take appropriate action
 				System.err.println("It broke.");
 				break;
 			}

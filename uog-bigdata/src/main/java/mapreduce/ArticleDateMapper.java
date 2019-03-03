@@ -46,7 +46,7 @@ public class ArticleDateMapper extends Mapper<LongWritable, Text, Text, Text> {
 			int ssPos = 1;
 			while (ssPos < splitString.length) {
 				word = splitString[ssPos];
-				if (!word.equals(title.toString()) && !valueSB.toString().contains(word)) { // no self-links TODO: rethink second part, as it's pretty inefficient (might be achievable with an additional mapreduce?)
+				if (!word.equals(title.toString()) && !valueSB.toString().contains(word)) { // no self-links
 					valueSB.append(word); // add link
 					valueSB.append(" ");
 				}
@@ -56,8 +56,5 @@ public class ArticleDateMapper extends Mapper<LongWritable, Text, Text, Text> {
 			dateAndLinks.set(valueSB.toString()); // set value
 			context.write(title, dateAndLinks);
 		}
-
-		// System.out.println("LOOK HERE!!!!!! " + "title: " + title.toString() + "
-		// date: " + debugDate + " links: " + Integer.toString(debugCount));
 	}
 }

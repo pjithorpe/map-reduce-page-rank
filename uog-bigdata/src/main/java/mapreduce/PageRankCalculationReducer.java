@@ -23,7 +23,7 @@ public class PageRankCalculationReducer<Key> extends Reducer<Key, Text, Key, Tex
 			String[] transfer = val.toString().split("\\s");
 			try {
 				if(transfer[0].equals(key.toString())) { //signifies original key and links, remember to write back to file
-					if(context.getConfiguration().get("lastIter", "0") != "1") {
+					if(context.getConfiguration().get("lastIter", "0") != "1") { //if this is the last iteration, just write the page ranks
 						title.set(transfer[0]);
 						for(int i=1; i<transfer.length; i++) {
 							sb.append(transfer[i]);
